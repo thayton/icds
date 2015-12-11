@@ -3,7 +3,6 @@
 import sys
 import signal
 
-from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
@@ -40,7 +39,10 @@ class Scraper(object):
 
     def select_option(self, xpath, value, waitfor_elem_xpath=None):
         if waitfor_elem_xpath:
-            func = make_waitfor_elem_updated_predicate(self.driver, waitfor_elem_xpath)
+            func = make_waitfor_elem_updated_predicate(
+                self.driver, 
+                waitfor_elem_xpath
+            )
 
         select = self.get_select(xpath)
         select.select_by_value(value)
@@ -54,15 +56,28 @@ class Scraper(object):
     def make_select_option_iterator(self, xpath, waitfor_elem_xpath):
         def next_option(xpath, waitfor_elem_xpath):
             select = self.get_select(xpath)
-            select_option_values = [ '%s' % o.get_attribute('value') for o 
-                                     in select.options 
-                                     if o.text != '-Select-']
+            select_option_values = [ 
+                '%s' % o.get_attribute('value') 
+                for o 
+                in select.options 
+                if o.text != '-Select-'
+            ]
 
             for v in select_option_values:
                 select = self.select_option(xpath, v, waitfor_elem_xpath)
                 yield select.first_selected_option.text
 
         return lambda: next_option(xpath, waitfor_elem_xpath)
+
+    def load_page(self):
+        self.driver.get(self.url)
+
+        def page_loaded(driver):
+            path = '//select[@id="ctl00_ContentPlaceHolder1_dropstate"]'
+            return driver.find_element_by_xpath(path)
+
+        wait = WebDriverWait(self.driver, 10)
+        wait.until(page_loaded)            
 
     def scrape(self):
         states = self.make_select_option_iterator(
@@ -80,14 +95,7 @@ class Scraper(object):
             None
         )
 
-        self.driver.get(self.url)
-
-        def page_loaded(driver):
-            path = '//select[@id="ctl00_ContentPlaceHolder1_dropstate"]'
-            return driver.find_element_by_xpath(path)
-
-        wait = WebDriverWait(self.driver, 10)
-        wait.until(page_loaded)            
+        self.load_page()
 
         for state in states():
             print state
@@ -95,8 +103,6 @@ class Scraper(object):
                 print 2*' ', district
                 for project in projects():
                     print 4*' ', project
-
-        #self.driver.save_screenshot('screenshot.png')
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, sigint)
