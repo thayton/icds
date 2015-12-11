@@ -3,7 +3,6 @@
 import sys
 import signal
 
-from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
